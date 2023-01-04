@@ -25,7 +25,10 @@ app.get('/get_chl',(req,res) =>{
             .catch(err => console.log(err))
         axios
             .get(`https://cluster.leaguestat.com/feed/index.php?feed=gc&key=${key}&client_code=${client_code}&game_id=${game_id}&lang_code=en&fmt=json&tab=gamesummary`)
-            .then(response => jsonRes = response.data)
+            .then(response => {
+                console.log(response,response.data)
+                jsonRes = response.data
+            })
             .catch(err => console.log(err))
         return res.status(200).json({
             data:jsonRes

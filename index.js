@@ -8,7 +8,6 @@ app.all('/', (req, res) => {
 })
 app.get('/get_chl',(req,res) =>{
     try{
-        console.log(req)
         const url = req.query.url;
         let key = '';
         let game_id = '';
@@ -26,10 +25,10 @@ app.get('/get_chl',(req,res) =>{
             .catch(err => console.log(err))
         axios
             .get(`https://cluster.leaguestat.com/feed/index.php?feed=gc&key=${key}&client_code=${client_code}&game_id=${game_id}&lang_code=en&fmt=json&tab=gamesummary`)
-            .then(response => jsonRes = response.data.GC.Gamesummary)
+            .then(response => jsonRes = response.data)
             .catch(err => console.log(err))
         return res.status(200).json({
-            ...jsonRes
+            data:jsonRes
         })
     }catch (err) {
         return res.status(500).json({

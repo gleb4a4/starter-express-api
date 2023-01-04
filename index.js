@@ -6,14 +6,14 @@ app.all('/', (req, res) => {
     console.log("Just got a request!")
     res.send('Yo!')
 })
-app.get('/get_chl',(req,res) =>{
+app.get('/get_chl',async (req,res) =>{
     try{
         const url = req.query.url;
         let key = '';
         let game_id = '';
         let client_code = '';
         let jsonRes = {};
-        axios
+        await axios
             .get(url)
             .then(response => {
                 const html_data = response.data;
@@ -23,7 +23,7 @@ app.get('/get_chl',(req,res) =>{
                 key = $('#scoreboard').data('feed_key')
             })
             .catch(err => console.log(err))
-        axios
+       await axios
             .get(`https://cluster.leaguestat.com/feed/index.php?feed=gc&key=${key}&client_code=${client_code}&game_id=${game_id}&lang_code=en&fmt=json&tab=gamesummary`)
             .then(response => {
                 console.log(response,response.data)

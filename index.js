@@ -6,7 +6,7 @@ app.all('/', (req, res) => {
     console.log("Just got a request!")
     res.send('Yo!')
 })
-app.post('/get_chl/:url',(req,res) =>{
+app.get('/get_chl',(req,res) =>{
     try{
         const url = req.params.url;
         let key = '';

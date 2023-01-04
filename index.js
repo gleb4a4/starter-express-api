@@ -8,6 +8,7 @@ app.all('/', (req, res) => {
 })
 app.get('/get_chl',(req,res) =>{
     try{
+        console.log(req)
         const url = req.params.url;
         let key = '';
         let game_id = '';

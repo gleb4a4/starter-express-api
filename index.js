@@ -9,7 +9,7 @@ app.all('/', (req, res) => {
 app.get('/get_chl',(req,res) =>{
     try{
         console.log(req)
-        const url = req.params.url;
+        const url = req.query.url;
         let key = '';
         let game_id = '';
         let client_code = '';

@@ -1,7 +1,11 @@
 const express = require('express');
 const cheerio = require('cheerio');
 const axios = require('axios');
+const cors = require('cors');
 const app = express()
+app.use(cors({
+    origin: '*'
+}));
 app.all('/', (req, res) => {
     console.log("Just got a request!")
     res.send('Yo!')
@@ -26,12 +30,11 @@ app.get('/get_chl',async (req,res) =>{
        await axios
             .get(`https://cluster.leaguestat.com/feed/index.php?feed=gc&key=${key}&client_code=${client_code}&game_id=${game_id}&lang_code=en&fmt=json&tab=gamesummary`)
             .then(response => {
-                console.log(response,response.data)
                 jsonRes = response.data
             })
             .catch(err => console.log(err))
         return res.status(200).json({
-            data:jsonRes
+            data: jsonRes
         })
     }catch (err) {
         return res.status(500).json({

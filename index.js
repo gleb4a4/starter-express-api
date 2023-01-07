@@ -254,7 +254,7 @@ app.get('/get_chanceLeague', async (req,res)=>{
                 form.away.shots_on_goal = parseInt(json.visitor.shots.total)
                 form.away.blocked_shots = parseInt(json.visitor.blocked_shots.total)
                 form.home.shots = form.home.shots_on_goal + missed_shot_home + form.away.blocked_shots
-                form.away.shots = form.home.shots_on_goal + missed_shot_away + form.home.blocked_shots
+                form.away.shots = form.away.shots_on_goal + missed_shot_away + form.home.blocked_shots
             })
         return res.status(200).json({
             ...form

@@ -9,6 +9,7 @@ app.use(cors({
 }));
 app.all('/', (req, res) => {
     console.log("Just got a request!")
+    // res.sendFile(path.join(__dirname, '/test.html'));
 })
 app.get('/get_chl',async (req,res) =>{
     try{
@@ -110,14 +111,90 @@ app.get('/get_ahl',async (req,res)=>{
     }
 })
 app.get('/get_mhl', async (req,res)=>{
+    const form = {
+        home: {
+            team_name: '',
+            shots: 0,
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            goals: 0
+        },
+        away: {
+            team_name: '',
+            shots: 0,
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            goals: 0
+        }
+    }
     try {
-      const reponse = await axios.get(`http://text.mhl.khl.ru/883394.html`)
-            .then(response => response.data)
+        const url = req.query.url;
+        const game_id = url.replace(/[^0-9]+/g, "");
+       await axios.get(`http://text.mhl.khl.ru/${game_id}.html`)
+            .then(response => {
+                const $ = cheerio.load(response.data)
+                 $('.game_info_team > .game_info_team_info > .game_info_team_name').each((iteration,elem) =>{
+                     if (iteration == 0) {
+                         form.home.team_name = $(elem).text().trim()
+                     }else {
+                         form.away.team_name = $(elem).text().trim()
+                     }
+                });
+                $('.game_info_team .game_info_team-right > .game_info_team_info > .game_info_team_name').text().trim();
+                const actionText = $('.e-action_txt').text()
+                const splitActionText = actionText.split(';')
+                splitActionText.forEach((item,index) => {
+                    if (index == 0){
+                        const splitItem = item.split('-');
+                        splitItem.forEach((value,index) => {
+                            if (index == 0){
+                                form.home.shots = value.replace(/[^0-9]+/g, "");
+                            }
+                            if (index == 1){
+                                form.away.shots = value.replace(/[^0-9]+/g, "");
+                            }
+                        })
+                    }
+                    if (index == 1){
+                        const splitItem = item.split('-');
+                        splitItem.forEach((value,index) => {
+                            if (index == 0){
+                                form.home.shots_on_goal = value.replace(/[^0-9]+/g, "");
+                            }
+                            if (index == 1){
+                                form.away.shots_on_goal = value.replace(/[^0-9]+/g, "");
+                            }
+                        })
+                    }
+                    if (index == 2){
+                        const splitItem = item.split('-');
+                        splitItem.forEach((value,index) => {
+                            if (index == 0){
+                                form.home.goals = value.replace(/[^0-9]+/g, "");
+                            }
+                            if (index == 1){
+                                form.away.goals = value.replace(/[^0-9]+/g, "");
+                            }
+                        })
+                    }
+                    if (index == 4){
+                        const splitItem = item.split('-');
+                        splitItem.forEach((value,index) => {
+                            if (index == 0){
+                                form.home.blocked_shots = value.replace(/[^0-9]+/g, "");
+                            }
+                            if (index == 1){
+                                form.away.blocked_shots = value.replace(/[^0-9]+/g, "");
+                            }
+                        })
+                    }
+                })
+            })
             .catch(err => err)
-        return res.status(200).json({
-            reponse
-        })
-    }catch (e) {
+    return res.status(200).json({
+        ...form
+    })
+    }catch (err) {
         return res.status(500).json({
             err: err.toString(),
         });

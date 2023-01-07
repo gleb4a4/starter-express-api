@@ -128,9 +128,10 @@ app.get('/get_mhl', async (req,res)=>{
         }
     }
     try {
-        // const url = req.query.url;
-        // const game_id = url.replace(/[^0-9]+/g, "");
-       await axios.get(`http://text.mhl.khl.ru/883394.html`)
+        const url = req.query.url;
+        const game_id = url.replace(/[^0-9]+/g, "");
+        console.log(game_id)
+       await axios.get(`http://text.mhl.khl.ru/883385.html`)
             .then(response => {
                 const $ = cheerio.load(response.data)
                  $('.game_info_team > .game_info_team_info > .game_info_team_name').each((iteration,elem) =>{

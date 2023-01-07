@@ -128,8 +128,8 @@ app.get('/get_mhl', async (req,res)=>{
         }
     }
     try {
-        const url = req.query.url;
-        const game_id = url.replace(/[^0-9]+/g, "");
+        // const url = req.query.url;
+        // const game_id = url.replace(/[^0-9]+/g, "");
        await axios.get(`http://text.mhl.khl.ru/883394.html`)
             .then(response => {
                 const $ = cheerio.load(response.data)

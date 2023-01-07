@@ -9,7 +9,7 @@ app.use(cors({
 }));
 app.all('/', (req, res) => {
     console.log("Just got a request!")
-    // res.sendFile(path.join(__dirname, '/test.html'));
+    res.sendFile(path.join(__dirname, '/test.html'));
 })
 app.get('/get_chl',async (req,res) =>{
     try{
@@ -222,23 +222,40 @@ app.get('/get_chanceLeague', async (req,res)=>{
     try {
         const url = req.query.url;
         const game_id = url.replace(/[^0-9]+/g, "");
+        let api_id = '';
+        let season = '';
         await axios.get(`https://www.hokej.cz/zapas/${game_id}/stats`)
             .then(response => {
                 const $ = cheerio.load(response.data)
-                form.home.team_name =  $('.team-home > a > h2.medium').text()
-                form.away.team_name =  $('.team-visiting > a > h2.medium').text()
-                form.home.goals = parseInt($('.table-statistics > tbody > tr[data-colname="Branky"] > td.team-home.p-total.highlighted').text());
-                form.away.goals = parseInt($('.table-statistics > tbody > tr[data-colname="Branky"] > td.team-away.p-total.highlighted').text());
-                form.home.shots_on_goal = parseInt($('.table-statistics > tbody > tr[data-colname="Střely na branku"] > td.team-home.p-total.highlighted').text());
-                form.away.shots_on_goal = parseInt($('.table-statistics > tbody > tr[data-colname="Střely na branku"] > td.team-away.p-total.highlighted').text());
-                form.home.blocked_shots = parseInt($('.table-statistics > tbody > tr[data-colname="Zblokované střely"] > td.team-home.p-total.highlighted').text());
-                form.away.blocked_shots = parseInt($('.table-statistics > tbody > tr[data-colname="Zblokované střely"] > td.team-away.p-total.highlighted').text());
-                const shots_out_home = parseInt($('.table-statistics > tbody > tr[data-colname="Střely mimo"] > td.team-home.p-total.highlighted').text());
-                const shots_out_away = parseInt($('.table-statistics > tbody > tr[data-colname="Střely mimo"] > td.team-away.p-total.highlighted').text());
-                form.home.shots =  form.home.shots_on_goal +  form.away.blocked_shots + shots_out_home;
-                form.away.shots =  form.away.shots_on_goal +  form.home.blocked_shots + shots_out_away;
+                form.home.team_name =  $('.team-home > a > h2.medium')
+                form.away.team_name =  $('.team-visiting > a > h2.medium')
+                $('script[type="text/javascript"]').each((iteration,elem)=>{
+                    if (iteration == 4){
+                        $(elem).text().split(':').forEach((value,index)=>{
+                            if (index == 2){
+                                season = value.replace(/[^0-9]+/g, "");
+                            }
+                            if (index == 3){
+                                api_id = value.replace(/[^0-9]+/g, "");
+                            }
+                        })
+                    }
+                })
+            }).catch(err => err)
+        await axios.get(`https://s3-eu-west-1.amazonaws.com/data.onlajny.com/hockey/summary/${season}/${api_id}.json`)
+            .then(response => {
+                const json = response.data;
+                form.home.goals = parseInt(json.home.goals.total)
+                form.home.shots_on_goal = parseInt(json.home.shots.total)
+                form.home.blocked_shots = parseInt(json.home.blocked_shots.total)
+                const missed_shot_home = parseInt(json.home.missed_shots.total)
+                const missed_shot_away = parseInt(json.visitor.missed_shots.total)
+                form.away.goals = parseInt(json.visitor.goals.total)
+                form.away.goals = parseInt(json.visitor.shots.total)
+                form.away.goals = parseInt(json.visitor.blocked_shots.total)
+                form.home.shots = form.home.shots_on_goal + missed_shot_home + form.away.blocked_shots
+                form.away.shots = form.home.shots_on_goal + missed_shot_away + form.home.blocked_shots
             })
-            .catch(err => err)
         return res.status(200).json({
             ...form
         })

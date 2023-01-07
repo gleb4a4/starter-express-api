@@ -202,4 +202,51 @@ app.get('/get_mhl', async (req,res)=>{
     }
 
 })
+app.get('/get_chanceLeague', async (req,res)=>{
+    const form = {
+        home: {
+            team_name: '',
+            shots: 0,
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            goals: 0
+        },
+        away: {
+            team_name: '',
+            shots: 0,
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            goals: 0
+        }
+    }
+    try {
+        const url = req.query.url;
+        const game_id = url.replace(/[^0-9]+/g, "");
+        await axios.get(`https://www.hokej.cz/zapas/${game_id}/stats`)
+            .then(response => {
+                const $ = cheerio.load(response.data)
+                form.home.team_name =  $('.team-home > a > h2.medium')
+                form.away.team_name =  $('.team-visiting > a > h2.medium')
+                form.home.goals = parseInt($('.table-statistics > tbody > tr[data-colname="Branky"] > td.team-home.p-total.highlighted').text());
+                form.away.goals = parseInt($('.table-statistics > tbody > tr[data-colname="Branky"] > td.team-away.p-total.highlighted').text());
+                form.home.shots_on_goal = parseInt($('.table-statistics > tbody > tr[data-colname="Střely na branku"] > td.team-home.p-total.highlighted').text());
+                form.away.shots_on_goal = parseInt($('.table-statistics > tbody > tr[data-colname="Střely na branku"] > td.team-away.p-total.highlighted').text());
+                form.home.blocked_shots = parseInt($('.table-statistics > tbody > tr[data-colname="Zblokované střely"] > td.team-home.p-total.highlighted').text());
+                form.away.blocked_shots = parseInt($('.table-statistics > tbody > tr[data-colname="Zblokované střely"] > td.team-away.p-total.highlighted').text());
+                const shots_out_home = parseInt($('.table-statistics > tbody > tr[data-colname="Střely mimo"] > td.team-home.p-total.highlighted').text());
+                const shots_out_away = parseInt($('.table-statistics > tbody > tr[data-colname="Střely mimo"] > td.team-away.p-total.highlighted').text());
+                form.home.shots =  form.home.shots_on_goal +  form.away.blocked_shots + shots_out_home;
+                form.away.shots =  form.away.shots_on_goal +  form.home.blocked_shots + shots_out_away;
+            })
+            .catch(err => err)
+        return res.status(200).json({
+            ...form
+        })
+    }catch (err) {
+        return res.status(500).json({
+            err: err.toString(),
+        });
+    }
+
+})
 app.listen(process.env.PORT || 3000)

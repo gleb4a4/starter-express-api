@@ -2,13 +2,13 @@ const express = require('express');
 const cheerio = require('cheerio');
 const axios = require('axios');
 const cors = require('cors');
+const path = require("path");
 const app = express()
 app.use(cors({
     origin: '*'
 }));
 app.all('/', (req, res) => {
     console.log("Just got a request!")
-    res.send('Yo!')
 })
 app.get('/get_chl',async (req,res) =>{
     try{
@@ -35,6 +35,59 @@ app.get('/get_chl',async (req,res) =>{
             .catch(err => console.log(err))
         return res.status(200).json({
             data: jsonRes
+        })
+    }catch (err) {
+        return res.status(500).json({
+            err: err.toString(),
+        });
+    }
+})
+app.get('/get_ahl',async (req,res)=>{
+    const form = {
+        home: {
+            team_name: '',
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            shots: 0,
+            goals: 0
+        },
+        away: {
+            team_name: '',
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            shots: 0,
+            goals: 0
+        }
+    }
+    try{
+        const url = req.query.url;
+        const game_id = url.replace(/[^0-9]+/g, "");
+       await axios.get(`https://lscluster.hockeytech.com/game_reports/official-game-report.php?client_code=ahl&game_id=${game_id}&lang_id=1`)
+           .then(response => {
+            const $ = cheerio.load(response.data)
+           $('td[width="240"] > table > tbody > tr').each(function(iteration,elem){
+               if (iteration == 1) {
+                   form.away.team_name = $(elem).find('td[align="left"]').text()
+                   form.away.goals = $(elem).find('td[align="center"]').last().text()
+
+               }
+               if (iteration == 2) {
+                   form.home.team_name = $(elem).find('td[align="left"]').text()
+                   form.home.goals = $(elem).find('td[align="center"]').last().text()
+                   form.home.goals = $(elem).find('td[align="center"]').last().text()
+               }
+               if (iteration == 4) {
+                   form.away.shots = $(elem).find('td[align="center"]').last().text()
+                   form.away.shots_on_goal = form.away.shots
+               }
+               if (iteration == 5) {
+                   form.home.shots = $(elem).find('td[align="center"]').last().text()
+                   form.home.shots_on_goal = form.home.shots
+               }
+           }).get()
+        })
+        return res.status(200).json({
+            ...form
         })
     }catch (err) {
         return res.status(500).json({

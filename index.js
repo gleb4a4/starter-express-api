@@ -143,15 +143,16 @@ app.get('/get_mhl', async (req,res)=>{
                 $('.game_info_team .game_info_team-right > .game_info_team_info > .game_info_team_name').text().trim();
                 const actionText = $('.e-action_txt').text()
                 const splitActionText = actionText.split(';')
-                splitActionText.forEach((item,index) => {
+                const removedSplitActiveText = splitActionText.splice(5)
+                removedSplitActiveText.forEach((item,index) => {
                     if (index == 0){
                         const splitItem = item.split('-');
                         splitItem.forEach((value,index) => {
                             if (index == 0){
-                                form.home.shots = value.replace(/[^0-9]+/g, "");
+                                form.home.shots = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                             if (index == 1){
-                                form.away.shots = value.replace(/[^0-9]+/g, "");
+                                form.away.shots = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                         })
                     }
@@ -159,10 +160,10 @@ app.get('/get_mhl', async (req,res)=>{
                         const splitItem = item.split('-');
                         splitItem.forEach((value,index) => {
                             if (index == 0){
-                                form.home.shots_on_goal = value.replace(/[^0-9]+/g, "");
+                                form.home.shots_on_goal = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                             if (index == 1){
-                                form.away.shots_on_goal = value.replace(/[^0-9]+/g, "");
+                                form.away.shots_on_goal = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                         })
                     }
@@ -170,10 +171,10 @@ app.get('/get_mhl', async (req,res)=>{
                         const splitItem = item.split('-');
                         splitItem.forEach((value,index) => {
                             if (index == 0){
-                                form.home.goals = value.replace(/[^0-9]+/g, "");
+                                form.home.goals = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                             if (index == 1){
-                                form.away.goals = value.replace(/[^0-9]+/g, "");
+                                form.away.goals = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                         })
                     }
@@ -181,10 +182,10 @@ app.get('/get_mhl', async (req,res)=>{
                         const splitItem = item.split('-');
                         splitItem.forEach((value,index) => {
                             if (index == 0){
-                                form.home.blocked_shots = value.replace(/[^0-9]+/g, "");
+                                form.home.blocked_shots = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                             if (index == 1){
-                                form.away.blocked_shots = value.replace(/[^0-9]+/g, "");
+                                form.away.blocked_shots = parseInt(value.replace(/[^0-9]+/g, ""));
                             }
                         })
                     }

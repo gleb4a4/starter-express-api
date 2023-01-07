@@ -251,8 +251,8 @@ app.get('/get_chanceLeague', async (req,res)=>{
                 const missed_shot_home = parseInt(json.home.missed_shots.total)
                 const missed_shot_away = parseInt(json.visitor.missed_shots.total)
                 form.away.goals = parseInt(json.visitor.goals.total)
-                form.away.goals = parseInt(json.visitor.shots.total)
-                form.away.goals = parseInt(json.visitor.blocked_shots.total)
+                form.away.shots_on_goal = parseInt(json.visitor.shots.total)
+                form.away.blocked_shots = parseInt(json.visitor.blocked_shots.total)
                 form.home.shots = form.home.shots_on_goal + missed_shot_home + form.away.blocked_shots
                 form.away.shots = form.home.shots_on_goal + missed_shot_away + form.home.blocked_shots
             })

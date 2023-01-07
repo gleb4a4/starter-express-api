@@ -83,20 +83,19 @@ app.get('/get_ahl',async (req,res)=>{
            $('td[width="240"] > table > tbody > tr').each(function(iteration,elem){
                if (iteration == 1) {
                    form.away.team_name = $(elem).find('td[align="left"]').text()
-                   form.away.goals = $(elem).find('td[align="center"]').last().text()
+                   form.away.goals = parseInt($(elem).find('td[align="center"]').last().text())
 
                }
                if (iteration == 2) {
                    form.home.team_name = $(elem).find('td[align="left"]').text()
-                   form.home.goals = $(elem).find('td[align="center"]').last().text()
-                   form.home.goals = $(elem).find('td[align="center"]').last().text()
+                   form.home.goals =  parseInt($(elem).find('td[align="center"]').last().text())
                }
                if (iteration == 4) {
-                   form.away.shots = $(elem).find('td[align="center"]').last().text()
+                   form.away.shots =  parseInt($(elem).find('td[align="center"]').last().text())
                    form.away.shots_on_goal = form.away.shots
                }
                if (iteration == 5) {
-                   form.home.shots = $(elem).find('td[align="center"]').last().text()
+                   form.home.shots =  parseInt($(elem).find('td[align="center"]').last().text())
                    form.home.shots_on_goal = form.home.shots
                }
            }).get()

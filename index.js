@@ -130,7 +130,6 @@ app.get('/get_mhl', async (req,res)=>{
     try {
         const url = req.query.url;
         const game_id = url.replace(/[^0-9]+/g, "");
-        //
        await axios.get(`http://text.mhl.khl.ru/${game_id}`+'.html')
             .then(response => {
                 const $ = cheerio.load(response.data)
@@ -146,7 +145,6 @@ app.get('/get_mhl', async (req,res)=>{
                 const splitActionText = actionText.split(';')
                 splitActionText.length = 5
                 splitActionText.forEach((item,index) => {
-                    console.log(item)
                     if (index == 0){
                         const splitItem = item.split('-');
                         splitItem.forEach((value,index) => {

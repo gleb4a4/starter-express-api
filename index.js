@@ -30,11 +30,26 @@ app.get('/get_chl',async (req,res) =>{
        await axios
             .get(`https://cluster.leaguestat.com/feed/index.php?feed=gc&key=${key}&client_code=${client_code}&game_id=${game_id}&lang_code=en&fmt=json&tab=gamesummary`)
             .then(response => {
-                jsonRes = response.data
+                jsonRes = response.data.GC.Gamesummary
             })
             .catch(err => console.log(err))
         return res.status(200).json({
-            data: jsonRes
+            home: {
+                team_id: parseInt(jsonRes.home.id),
+                team_name: jsonRes.home.name,
+                shots_on_goal: jsonRes.totalShots.home,
+                shots: jsonRes.totalShots.home,
+                blocked_shots: 0,
+                goals: jsonRes.goalCount.home,
+            },
+            away: {
+                team_id: parseInt(jsonRes.visitor.id),
+                team_name: jsonRes.visitor.name,
+                shots_on_goal: jsonRes.totalShots.visitor,
+                shots: jsonRes.totalShots.visitor,
+                blocked_shots: 0,
+                goals: jsonRes.goalCount.visitor,
+            },
         })
     }catch (err) {
         return res.status(500).json({

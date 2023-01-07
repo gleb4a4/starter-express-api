@@ -225,8 +225,8 @@ app.get('/get_chanceLeague', async (req,res)=>{
         await axios.get(`https://www.hokej.cz/zapas/${game_id}/stats`)
             .then(response => {
                 const $ = cheerio.load(response.data)
-                form.home.team_name =  $('.team-home > a > h2.medium')
-                form.away.team_name =  $('.team-visiting > a > h2.medium')
+                form.home.team_name =  $('.team-home > a > h2.medium').text()
+                form.away.team_name =  $('.team-visiting > a > h2.medium').text()
                 form.home.goals = parseInt($('.table-statistics > tbody > tr[data-colname="Branky"] > td.team-home.p-total.highlighted').text());
                 form.away.goals = parseInt($('.table-statistics > tbody > tr[data-colname="Branky"] > td.team-away.p-total.highlighted').text());
                 form.home.shots_on_goal = parseInt($('.table-statistics > tbody > tr[data-colname="Střely na branku"] > td.team-home.p-total.highlighted').text());

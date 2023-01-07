@@ -109,4 +109,19 @@ app.get('/get_ahl',async (req,res)=>{
         });
     }
 })
+app.get('/get_mhl', async (req,res)=>{
+    try {
+      const reponse = await axios.get(`http://text.mhl.khl.ru/883394.html`)
+            .then(response => response.data)
+            .catch(err => err)
+        return res.status(200).json({
+            reponse
+        })
+    }catch (e) {
+        return res.status(500).json({
+            err: err.toString(),
+        });
+    }
+
+})
 app.listen(process.env.PORT || 3000)

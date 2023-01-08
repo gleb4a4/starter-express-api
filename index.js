@@ -266,4 +266,51 @@ app.get('/get_chanceLeague', async (req,res)=>{
     }
 
 })
+app.get('/get_nla', async (req,res)=>{
+    const form = {
+        home: {
+            team_name: '',
+            shots: 0,
+            xg:0,
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            goals: 0
+        },
+        away: {
+            team_name: '',
+            shots: 0,
+            xg:0,
+            shots_on_goal: 0,
+            blocked_shots: 0,
+            goals: 0
+        }
+    }
+    try {
+        const url = req.query.url;
+        const game_id = url.replace(/[^0-9]+/g, "");
+        await axios.get(`https://www.nationalleague.ch/api/games/${game_id}?lang=de-CH`)
+            .then(response => {
+                const { overview, shotsAway, shotsHome, teamStatsHome, teamStatsAway } = response.data
+                form.home.team_name = overview.homeTeamShortName;
+                form.away.team_name =  overview.awayTeamShortName;
+                form.home.shots = shotsHome.length;
+                form.away.shots = shotsAway.length;
+                form.home.xg = shotsHome.pop().xgSum;
+                form.away.xg = shotsAway.pop().xgSum;
+                form.home.shots_on_goal = teamStatsAway.sa;
+                form.away.shots_on_goal = teamStatsHome.sa;
+                form.home.blocked_shots = teamStatsHome.bks;
+                form.away.blocked_shots = teamStatsAway.bks;
+            }).catch(err => err)
+
+        return res.status(200).json({
+            ...form
+        })
+    }catch (err) {
+        return res.status(500).json({
+            err: err.toString(),
+        });
+    }
+
+})
 app.listen(process.env.PORT || 3000)

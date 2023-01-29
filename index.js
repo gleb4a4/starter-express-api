@@ -1,9 +1,13 @@
-const express = require('express');
-const cheerio = require('cheerio');
-const axios = require('axios');
-const cors = require('cors');
-const path = require("path");
+import express from 'express'
+import cheerio from 'cheerio';
+import axios from 'axios';
+import cors from 'cors'
+import * as path from "path";
+import * as fs from "fs";
 const app = express()
+import {addTimeToGoal, addTwoPeriodTimesToGoal, checkPeriodsTime} from "./helpers.js";
+import {BLOCKED_SHOT, SHOT, GOAL, MISSED_SHOT, PERIOD_END, CHALLENGE, PENALTY, STOP} from "./constants.js";
+
 app.use(cors({
     origin: '*'
 }));
@@ -313,6 +317,287 @@ app.get('/get_nla', async (req,res)=>{
             err: err.toString(),
         });
     }
+})
+app.get('/get_nhl_matches_all', async (req,res) => {
+    const newDate = new Date();
+    const currentDate = newDate.getUTCFullYear()+'-'+newDate.getMonth()+1+'-'+newDate.getUTCDate();
+    try {
+        const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/schedule?expand=schedule.brodcasts&startDate=2022-10-10&endDate=${currentDate}`)
+        const games = {}
+        data.dates.forEach(item => {
+            item.games.forEach(game => {
+                games[game.gamePk] = {}
+                games[game.gamePk]['game_id'] = game.gamePk
+                games[game.gamePk]['video_review'] = 0;
+                games[game.gamePk]['home_team'] = {
+                    ...game.teams.home.team,
+                    score: 0
+                }
+                games[game.gamePk]['away_team'] = {
+                    ...game.teams.away.team,
+                    score: 0
+                }
+            })
+        })
+        fs.writeFile('allgamesNHL.json', JSON.stringify(games), 'utf8',function () {
+            
+        });
+        return res.status(200).json({
+            ...games
+        })
+    }catch (err) {
+        return res.status(500).json({
+            err: err.toString(),
+        });
+    }
+})
+app.get('/get_nhl_goalies_by_match', async (req,res) => {
+    try {
+        let json = null
+        fs.readFile('allgamesNHL.json', 'utf8', async function readFileCallback(err, nhlGames){
+            if (err){
+                console.log(err);
+            } else {
+                let obj = JSON.parse(nhlGames); //now it an object
+                for (const [key, _] of Object.entries(obj)) {
+                    console.log(key)
+                    const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/game/${key}/feed/live`)
+                    obj[key]['home_team']['goalie'] = {}
+                    obj[key]['away_team']['goalie'] = {}
+                    const home_team_id = obj[key]['home_team']['id']
+                    const away_team_id = obj[key]['away_team']['id']
+                    const players = data.gameData.players;
+                    for (const [_, value] of Object.entries(players)) {
+                        if (value.primaryPosition.type === 'Goalie') {
+                            if (home_team_id === value.currentTeam.id) {
+                                obj[key]['home_team']['goalie'][value.id] = {
+                                    'first_name': value.firstName,
+                                    'last_name' : value.lastName,
+                                    'full_name' : value.fullName
+                                }
+                            }
+                            if (away_team_id === value.currentTeam.id) {
+                                obj[key]['away_team']['goalie'][value.id] = {
+                                    'first_name': value.firstName,
+                                    'last_name': value.lastName,
+                                    'full_name': value.fullName
+                                }
+                            }
+                        }
+                    }
+                }
+                //save
+                json = JSON.stringify(obj); //convert it back to json
+                fs.writeFile('allgamesNHL.json', json, 'utf8', ()=>{}); // write it back
+            }
+        });
+        return res.status(200).json({
+            ...JSON.parse(json)
+        })
+    }catch (err) {
+        return res.status(500).json({
+            err: err.toString(),
+        });
+    }
+})
+app.get('/get_nhl_events_match', async (req,res) => {
+    try {
+        let json = null
+        fs.readFile('allgamesNHL.json', 'utf8', async function readFileCallback(err, nhlGames){
+            if (err){
+                console.log(err);
+            } else {
+                let obj = JSON.parse(nhlGames); //now it an object
+                for (const [key, _] of Object.entries(obj)) {
+                    console.log(key)
+                    const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/game/${key}/feed/live`)
+                    const home_team_id = obj[key]['home_team']['id']
+                    const away_team_id = obj[key]['away_team']['id']
+                    obj[key]['home_team']['stats'] = {
+                        goals: 0,
+                        goalsInterval: {
+                            10: 0,
+                            20: 0,
+                            30: 0,
+                            40: 0,
+                            50: 0,
+                            55: 0,
+                            60: 0
+                        },
+                        firstPenalty: {
+                            type:'',
+                            score: 0
+                        },
+                        blocked_shots: 0,
+                        shots: 0,
+                        shots_on_goal: 0,
+                        empty_goals: 0,
+                    }
+                    obj[key]['away_team']['stats'] = {
+                        goals: 0,
+                        goalsInterval: {
+                            10: 0,
+                            20: 0,
+                            30: 0,
+                            40: 0,
+                            50: 0,
+                            55: 0,
+                            60: 0
+                        },
+                        firstPenalty: {
+                            type:'',
+                            score: 0
+                        },
+                        blocked_shots: 0,
+                        shots: 0,
+                        shots_on_goal: 0,
+                        empty_goals: 0,
+                    }
+                    const allEvents = data.liveData.plays.allPlays;
+                    allEvents.forEach(item => {
+                        if (item.result.eventTypeId === PENALTY) {
+                            if (home_team_id === item.team.id && obj[key]['home_team']['stats'].firstPenalty.score === 0) {
+                                obj[key]['home_team']['stats'].firstPenalty.type = item.result.secondaryType
+                                obj[key]['home_team']['stats'].firstPenalty.score += 1
+                            }
+                            if (away_team_id === item.team.id &&  obj[key]['away_team']['stats'].firstPenalty.score === 0) {
+                                obj[key]['away_team']['stats'].firstPenalty.type = item.result.secondaryType
+                                obj[key]['away_team']['stats'].firstPenalty.score += 1
+                            }
+                        }
+                        if (item.result.eventTypeId === GOAL) {
+                            const time = item.about.periodTime;
+                            const splitTime = time.split(':');
+                            const minutes = parseInt(splitTime[0]);
+                            if (home_team_id === item.team.id) {
+                                if (item.about.period === 1) {
+                                    if (minutes < 10) {
+                                        obj[key]['home_team']['stats'].goalsInterval[10] += 1
+                                    }
+                                    if (minutes >= 10) {
+                                        obj[key]['home_team']['stats'].goalsInterval[20] += 1
+                                    }
+                                }
+                                if (item.about.period === 2) {
+                                    if (minutes < 10) {
+                                        obj[key]['home_team']['stats'].goalsInterval[30] += 1
+                                    }
+                                    if (minutes >= 10) {
+                                        obj[key]['home_team']['stats'].goalsInterval[40] += 1
+                                    }
+                                }
+                                if (item.about.period === 3) {
+                                    if (minutes < 10) {
+                                        obj[key]['home_team']['stats'].goalsInterval[50] += 1
+                                    }
+                                    if (minutes >= 10 && minutes < 15) {
+                                        obj[key]['home_team']['stats'].goalsInterval[55] += 1
+                                    }
+                                    if (minutes >= 15 && !item.result.emptyNet) {
+                                        obj[key]['home_team']['stats'].goalsInterval[60] += 1
+                                    }
+                                }
+                            }
+                            if (away_team_id === item.team.id) {
+                                if (item.about.period === 1) {
+                                    if (minutes < 10) {
+                                        obj[key]['away_team']['stats'].goalsInterval[10] += 1
+                                    }
+                                    if (minutes >= 10) {
+                                        obj[key]['away_team']['stats'].goalsInterval[20] += 1
+                                    }
+                                }
 
+                                if (item.about.period === 2) {
+                                    if (minutes < 10) {
+                                        obj[key]['away_team']['stats'].goalsInterval[30] += 1
+                                    }
+                                    if (minutes >= 10) {
+                                        obj[key]['away_team']['stats'].goalsInterval[40] += 1
+                                    }
+                                }
+                                if (item.about.period === 3) {
+                                    if (minutes < 10) {
+                                        obj[key]['away_team']['stats'].goalsInterval[50] += 1
+                                    }
+                                    if (minutes >= 10 && minutes < 15) {
+                                        obj[key]['away_team']['stats'].goalsInterval[55] += 1
+                                    }
+                                    if (minutes >= 15 && !item.result.emptyNet) {
+                                        obj[key]['away_team']['stats'].goalsInterval[60] += 1
+                                    }
+                                }
+                            }
+                        }
+                        if (item.result.eventTypeId === CHALLENGE || item.result.eventTypeId === STOP && item.result.description == 'Video Review') {
+                            obj[key].video_review = 1;
+                        }
+                        if (item.about.period === 3 && checkPeriodsTime(item.about.periodTimeRemaining)) {
+                            if (item.result.eventTypeId === BLOCKED_SHOT) {
+                                if (home_team_id === item.team.id) {
+                                    obj[key]['home_team']['stats'].blocked_shots += 1
+                                }
+                                if (away_team_id === item.team.id) {
+                                    obj[key]['away_team']['stats'].blocked_shots += 1
+                                }
+                            }
+                            if (item.result.eventTypeId === SHOT) {
+                                if (home_team_id === item.team.id) {
+                                    obj[key]['home_team']['stats'].shots += 1
+                                    obj[key]['home_team']['stats'].shots_on_goal += 1
+                                }
+                                if (away_team_id === item.team.id) {
+                                    obj[key]['away_team']['stats'].shots += 1
+                                    obj[key]['away_team']['stats'].shots_on_goal += 1
+                                }
+                            }
+                            if (item.result.eventTypeId === MISSED_SHOT) {
+                                if (home_team_id === item.team.id) {
+                                    obj[key]['home_team']['stats'].shots += 1
+                                }
+                                if (away_team_id === item.team.id) {
+                                    obj[key]['away_team']['stats'].shots += 1
+                                }
+                            }
+                            if (item.result.eventTypeId === PERIOD_END) {
+                                obj[key]['home_team'].score = item.about.goals.home
+                                obj[key]['away_team'].score = item.about.goals.away
+                            }
+                            if (item.result.eventTypeId === GOAL) {
+                                if (home_team_id === item.team.id) {
+                                    obj[key]['home_team']['stats'].goals += 1
+                                    // obj[key]['home_team']['stats'].goalTime.push(addTwoPeriodTimesToGoal(item.about.periodTime))
+                                    if (item.result.emptyNet) {
+                                        if (obj[key]['home_team']['stats'].empty_goals === 0) {
+                                            obj[key]['home_team']['stats'].empty_goals += 1
+                                        }
+                                    }
+                                }
+                                if (away_team_id === item.team.id) {
+                                    obj[key]['away_team']['stats'].goals += 1
+                                    // obj[key]['away_team']['stats'].goalTime.push(addTwoPeriodTimesToGoal(item.about.periodTime))
+                                    if (item.result.emptyNet) {
+                                        if (obj[key]['away_team']['stats'].empty_goals === 0) {
+                                            obj[key]['away_team']['stats'].empty_goals += 1
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    })
+                }
+                //save
+                json = JSON.stringify(obj); //convert it back to json
+                fs.writeFile('allgamesNHL.json', json, 'utf8', ()=>{}); // write it back
+            }
+        });
+        return res.status(200).json({
+            ...JSON.parse(json)
+        })
+    }catch (err) {
+        return res.status(500).json({
+            err: err.toString(),
+        });
+    }
 })
 app.listen(process.env.PORT || 3000)

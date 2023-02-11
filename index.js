@@ -409,7 +409,7 @@ app.get('/get_nhl_events_match', async (req,res) => {
             Key: `nhl_games_${currentDate}.json`,
         }).promise()
         return res.status(200).json({
-            ...JSON.parse(nhl_games)
+            ...JSON.parse(nhl_games.body)
         })
                 let obj = JSON.parse(nhl_games); //now it an object
                 for (const [key, _] of Object.entries(obj)) {

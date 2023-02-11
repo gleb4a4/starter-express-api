@@ -318,6 +318,7 @@ app.get('/get_nla', async (req,res)=>{
 })
 app.get('/get_nhl_matches_all', async (req,res) => {
     const currentDate = getCurrentDate();
+    console.log(currentDate);
     try {
         const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/schedule?expand=schedule.brodcasts&startDate=2022-10-10&endDate=${currentDate}`)
         const games = {}

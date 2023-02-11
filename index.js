@@ -320,7 +320,9 @@ app.get('/get_nla', async (req,res)=>{
 })
 app.get('/get_nhl_matches_all', async (req,res) => {
     const newDate = new Date();
-    const currentDate = newDate.getUTCFullYear()+'-'+newDate.getMonth()+1+'-'+newDate.getUTCDate();
+    const month = newDate.getMonth() < 10 ? '0' + newDate.getMonth() + 1 : newDate.getMonth() + 1
+    const day = newDate.getUTCDate() === 1 ? newDate.getUTCDate() : newDate.getUTCDate() - 1
+    const currentDate = newDate.getUTCFullYear() + '-' + month + '-' + day;
     try {
         const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/schedule?expand=schedule.brodcasts&startDate=2022-10-10&endDate=${currentDate}`)
         const games = {}
@@ -414,6 +416,11 @@ app.get('/get_nhl_events_match', async (req,res) => {
                     const home_team_id = obj[key]['home_team']['id']
                     const away_team_id = obj[key]['away_team']['id']
                     obj[key]['home_team']['stats'] = {
+                        firstPeriod: {
+                            '0.5M':0,
+                            '1.5Б':0,
+                            'draw':0,
+                        },
                         goals: 0,
                         goalsInterval: {
                             10: 0,
@@ -434,6 +441,11 @@ app.get('/get_nhl_events_match', async (req,res) => {
                         empty_goals: 0,
                     }
                     obj[key]['away_team']['stats'] = {
+                        firstPeriod: {
+                            '0.5M':0,
+                            '1.5Б':0,
+                            'draw':0,
+                        },
                         goals: 0,
                         goalsInterval: {
                             10: 0,
@@ -455,6 +467,25 @@ app.get('/get_nhl_events_match', async (req,res) => {
                     }
                     const allEvents = data.liveData.plays.allPlays;
                     allEvents.forEach(item => {
+                        if (item.result.eventTypeId === PERIOD_END && item.about.period === 1) {
+                            let PeriodGoals = 0;
+                            PeriodGoals += item.about.goals.away
+                            PeriodGoals += item.about.goals.home
+                            if (PeriodGoals === 0) {
+                                obj[key]['home_team']['stats']['firstPeriod']['draw'] += 1;
+                                obj[key]['away_team']['stats']['firstPeriod']['draw'] += 1;
+                                obj[key]['home_team']['stats']['firstPeriod']['0.5M'] += 1;
+                                obj[key]['away_team']['stats']['firstPeriod']['0.5M'] += 1;
+                            }
+                            if (PeriodGoals >= 2) {
+                                obj[key]['home_team']['stats']['firstPeriod']['1.5Б'] += 1;
+                                obj[key]['away_team']['stats']['firstPeriod']['1.5Б'] += 1;
+                                if (item.about.goals.away === item.about.goals.home) {
+                                    obj[key]['home_team']['stats']['firstPeriod']['draw'] += 1;
+                                    obj[key]['away_team']['stats']['firstPeriod']['draw'] += 1;
+                                }
+                            }
+                        }
                         if (item.result.eventTypeId === PENALTY) {
                             if (home_team_id === item.team.id && obj[key]['home_team']['stats'].firstPenalty.score === 0) {
                                 obj[key]['home_team']['stats'].firstPenalty.type = item.result.secondaryType

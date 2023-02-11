@@ -644,7 +644,7 @@ app.get('/get_file_nhl_matches',async (req,res) => {
 
        let obj = JSON.parse(nhl_games.Body.toString('utf-8'));
        return res.status(200).json({
-           obj
+           ...obj
        })
    }catch (err) {
        return res.status(500).json({

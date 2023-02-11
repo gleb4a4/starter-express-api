@@ -642,7 +642,7 @@ app.get('/get_file_nhl_matches',async (req,res) => {
            Key: `nhl_games_${currentDate}.json`,
        }).promise()
 
-       let obj = JSON.parse(nhl_games);
+       let obj = JSON.parse(nhl_games.Body.toString('utf-8'));
        return res.status(200).json({
            ...JSON.parse(obj)
        })

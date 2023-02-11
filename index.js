@@ -6,6 +6,7 @@ const app = express()
 import {checkPeriodsTime, getCurrentDate} from "./helpers.js";
 import {BLOCKED_SHOT, SHOT, GOAL, MISSED_SHOT, PERIOD_END, CHALLENGE, PENALTY, STOP} from "./constants.js";
 import AWS from 'aws-sdk';
+import * as fs from "fs";
 const s3 = new AWS.S3()
 app.use(cors({
     origin: '*'
@@ -408,10 +409,8 @@ app.get('/get_nhl_events_match', async (req,res) => {
             Bucket: "cyclic-fine-tan-snapper-ring-eu-west-1",
             Key: `nhl_games_${currentDate}.json`,
         }).promise()
-        return res.status(200).json({
-            nhl_games
-        })
-                let obj = JSON.parse(nhl_games); //now it an object
+
+                let obj = JSON.parse(fs.readFileSync(nhl_games, 'utf8')); //now it an object
                 for (const [key, _] of Object.entries(obj)) {
                     const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/game/${key}/feed/live`)
                     const home_team_id = obj[key]['home_team']['id']

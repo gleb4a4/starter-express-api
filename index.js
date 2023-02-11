@@ -410,7 +410,7 @@ app.get('/get_nhl_events_match', async (req,res) => {
             Key: `nhl_games_${currentDate}.json`,
         }).promise()
 
-                let obj = JSON.parse(fs.readFileSync(nhl_games, 'utf8')); //now it an object
+                let obj = JSON.parse(nhl_games.Body.toString('utf-8'))
                 for (const [key, _] of Object.entries(obj)) {
                     const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/game/${key}/feed/live`)
                     const home_team_id = obj[key]['home_team']['id']

@@ -17,7 +17,7 @@ export function addTimeToGoal(str,period) {
 
 export function getCurrentDate() {
     const newDate = new Date();
-    const month = newDate.getMonth() < 10 ? '0' + newDate.getMonth() + 1 : newDate.getMonth() + 1
+    const month = newDate.getMonth() < 10 ? '0' + (newDate.getMonth() + 1) : newDate.getMonth() + 1
     const day = newDate.getUTCDate() === 1 ? newDate.getUTCDate() : newDate.getUTCDate() - 1
     return newDate.getUTCFullYear() + '-' + month + '-' + day;
 }

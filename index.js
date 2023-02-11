@@ -2,18 +2,16 @@ import express from 'express'
 import cheerio from 'cheerio';
 import axios from 'axios';
 import cors from 'cors'
-import * as path from "path";
-import * as fs from "fs";
 const app = express()
-import {addTimeToGoal, addTwoPeriodTimesToGoal, checkPeriodsTime} from "./helpers.js";
+import {checkPeriodsTime, getCurrentDate} from "./helpers.js";
 import {BLOCKED_SHOT, SHOT, GOAL, MISSED_SHOT, PERIOD_END, CHALLENGE, PENALTY, STOP} from "./constants.js";
-
+import AWS from 'aws-sdk';
+const s3 = new AWS.S3()
 app.use(cors({
     origin: '*'
 }));
 app.all('/', (req, res) => {
     console.log("Just got a request!")
-    res.sendFile(path.join(__dirname, '/test.html'));
 })
 app.get('/get_chl',async (req,res) =>{
     try{
@@ -319,10 +317,7 @@ app.get('/get_nla', async (req,res)=>{
     }
 })
 app.get('/get_nhl_matches_all', async (req,res) => {
-    const newDate = new Date();
-    const month = newDate.getMonth() < 10 ? '0' + newDate.getMonth() + 1 : newDate.getMonth() + 1
-    const day = newDate.getUTCDate() === 1 ? newDate.getUTCDate() : newDate.getUTCDate() - 1
-    const currentDate = newDate.getUTCFullYear() + '-' + month + '-' + day;
+    const currentDate = getCurrentDate();
     try {
         const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/schedule?expand=schedule.brodcasts&startDate=2022-10-10&endDate=${currentDate}`)
         const games = {}
@@ -341,9 +336,11 @@ app.get('/get_nhl_matches_all', async (req,res) => {
                 }
             })
         })
-        fs.writeFile('allgamesNHL.json', JSON.stringify(games), 'utf8',function () {
-            
-        });
+        await s3.putObject({
+            Body: JSON.stringify(games),
+            Bucket: "cyclic-fine-tan-snapper-ring-eu-west-1",
+            Key: `nhl_games_${currentDate}.json`,
+        }).promise()
         return res.status(200).json({
             ...games
         })
@@ -353,65 +350,66 @@ app.get('/get_nhl_matches_all', async (req,res) => {
         });
     }
 })
-app.get('/get_nhl_goalies_by_match', async (req,res) => {
-    try {
-        let json = null
-        fs.readFile('allgamesNHL.json', 'utf8', async function readFileCallback(err, nhlGames){
-            if (err){
-                console.log(err);
-            } else {
-                let obj = JSON.parse(nhlGames); //now it an object
-                for (const [key, _] of Object.entries(obj)) {
-                    console.log(key)
-                    const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/game/${key}/feed/live`)
-                    obj[key]['home_team']['goalie'] = {}
-                    obj[key]['away_team']['goalie'] = {}
-                    const home_team_id = obj[key]['home_team']['id']
-                    const away_team_id = obj[key]['away_team']['id']
-                    const players = data.gameData.players;
-                    for (const [_, value] of Object.entries(players)) {
-                        if (value.primaryPosition.type === 'Goalie') {
-                            if (home_team_id === value.currentTeam.id) {
-                                obj[key]['home_team']['goalie'][value.id] = {
-                                    'first_name': value.firstName,
-                                    'last_name' : value.lastName,
-                                    'full_name' : value.fullName
-                                }
-                            }
-                            if (away_team_id === value.currentTeam.id) {
-                                obj[key]['away_team']['goalie'][value.id] = {
-                                    'first_name': value.firstName,
-                                    'last_name': value.lastName,
-                                    'full_name': value.fullName
-                                }
-                            }
-                        }
-                    }
-                }
-                //save
-                json = JSON.stringify(obj); //convert it back to json
-                fs.writeFile('allgamesNHL.json', json, 'utf8', ()=>{}); // write it back
-            }
-        });
-        return res.status(200).json({
-            ...JSON.parse(json)
-        })
-    }catch (err) {
-        return res.status(500).json({
-            err: err.toString(),
-        });
-    }
-})
+// app.get('/get_nhl_goalies_by_match', async (req,res) => {
+//     try {
+//         let json = null
+//         fs.readFile('allgamesNHL.json', 'utf8', async function readFileCallback(err, nhlGames){
+//             if (err){
+//                 console.log(err);
+//             } else {
+//                 let obj = JSON.parse(nhlGames); //now it an object
+//                 for (const [key, _] of Object.entries(obj)) {
+//                     console.log(key)
+//                     const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/game/${key}/feed/live`)
+//                     obj[key]['home_team']['goalie'] = {}
+//                     obj[key]['away_team']['goalie'] = {}
+//                     const home_team_id = obj[key]['home_team']['id']
+//                     const away_team_id = obj[key]['away_team']['id']
+//                     const players = data.gameData.players;
+//                     for (const [_, value] of Object.entries(players)) {
+//                         if (value.primaryPosition.type === 'Goalie') {
+//                             if (home_team_id === value.currentTeam.id) {
+//                                 obj[key]['home_team']['goalie'][value.id] = {
+//                                     'first_name': value.firstName,
+//                                     'last_name' : value.lastName,
+//                                     'full_name' : value.fullName
+//                                 }
+//                             }
+//                             if (away_team_id === value.currentTeam.id) {
+//                                 obj[key]['away_team']['goalie'][value.id] = {
+//                                     'first_name': value.firstName,
+//                                     'last_name': value.lastName,
+//                                     'full_name': value.fullName
+//                                 }
+//                             }
+//                         }
+//                     }
+//                 }
+//                 //save
+//                 json = JSON.stringify(obj); //convert it back to json
+//                 fs.writeFile('allgamesNHL.json', json, 'utf8', ()=>{}); // write it back
+//             }
+//         });
+//         return res.status(200).json({
+//             ...JSON.parse(json)
+//         })
+//     }catch (err) {
+//         return res.status(500).json({
+//             err: err.toString(),
+//         });
+//     }
+// })
 app.get('/get_nhl_events_match', async (req,res) => {
+    const currentDate = getCurrentDate();
     try {
         let json = null
-        fs.readFile('allgamesNHL.json', 'utf8', async function readFileCallback(err, nhlGames){
-            if (err){
-                console.log(err);
-            } else {
-                let obj = JSON.parse(nhlGames); //now it an object
+        let nhl_games = await s3.getObject({
+            Bucket: "cyclic-fine-tan-snapper-ring-eu-west-1",
+            Key: `nhl_games_${currentDate}.json`,
+        }).promise()
+
+                let obj = JSON.parse(nhl_games); //now it an object
                 for (const [key, _] of Object.entries(obj)) {
-                    console.log(key)
                     const { data } = await axios.get(`https://statsapi.web.nhl.com/api/v1/game/${key}/feed/live`)
                     const home_team_id = obj[key]['home_team']['id']
                     const away_team_id = obj[key]['away_team']['id']
@@ -619,9 +617,12 @@ app.get('/get_nhl_events_match', async (req,res) => {
                 }
                 //save
                 json = JSON.stringify(obj); //convert it back to json
-                fs.writeFile('allgamesNHL.json', json, 'utf8', ()=>{}); // write it back
-            }
-        });
+                // fs.writeFile('allgamesNHL.json', json, 'utf8', ()=>{}); // write it back
+        await s3.putObject({
+            Body: JSON.stringify(json),
+            Bucket: "cyclic-fine-tan-snapper-ring-eu-west-1",
+            Key: `nhl_games_${currentDate}.json`,
+        }).promise()
         return res.status(200).json({
             ...JSON.parse(json)
         })
@@ -631,4 +632,22 @@ app.get('/get_nhl_events_match', async (req,res) => {
         });
     }
 })
+app.get('/get_file_nhl_matches',async (req,res) => {
+   try {
+       const currentDate = getCurrentDate();
+       let nhl_games = await s3.getObject({
+           Bucket: "cyclic-fine-tan-snapper-ring-eu-west-1",
+           Key: `nhl_games_${currentDate}.json`,
+       }).promise()
+
+       let obj = JSON.parse(nhl_games);
+       return res.status(200).json({
+           ...JSON.parse(obj)
+       })
+   }catch (err) {
+       return res.status(500).json({
+           err: err.toString(),
+       });
+   }
+});
 app.listen(process.env.PORT || 3000)
